@@ -22,6 +22,9 @@ def verify_slip():
         return jsonify({"success": False, "message": "Missing 'file' key in request"}), 400
     
     file = request.files['file']
+    print(file.filename)
+    print(file.content_type)
+    print(file.stream)
     
     if file.filename == '':
         return jsonify({"success": False, "message": "No selected file"}), 400
@@ -39,11 +42,12 @@ def verify_slip():
     files = {
         'file': (file.filename, file.stream, file.content_type)
     }
+    print(files)
 
     try:
         # 4. ส่ง Request ไปยัง Slip2Go
         response = requests.post(SLIP2GO_ENDPOINT, headers=headers, files=files)
-        
+        print(response.status_code)
         # ตรวจสอบว่า Response เป็น JSON หรือไม่
         try:
             result = response.json()
@@ -51,7 +55,7 @@ def verify_slip():
             return jsonify({"success": False, "message": "Invalid response from Slip2Go"}), 502
 
         # 5. จัดการผลลัพธ์ตามเอกสารหน้า 13-14
-        if response.status_code == 200 and result.get('success') == True:
+        if response.status_code >= 200 or response.status_code < 300 and result.get('success') == True:
             slip_info = result.get('data', {})
             return jsonify({
                 "success": True,
