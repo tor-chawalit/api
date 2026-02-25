@@ -7,7 +7,7 @@ app = Flask(__name__)
 # อนุญาตให้ Flutter Web เชื่อมต่อได้
 CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["Content-Type", "Authorization"])
 SLIP2GO_API_SECRET = 'QvCf0zm2AwStSwtufGk9xH_DoxWf0B4SIUfi5m28TRM=' 
-SLIP2GO_ENDPOINT = 'https://api.slip2go.com/api/v1/verify-slip/image/info'
+SLIP2GO_ENDPOINT = 'https://connect.slip2go.com/api/verify-slip/qr-image/info'
 @app.route('/')
 def health_check():
     return "Slip2go API Service is Online!", 200
@@ -18,35 +18,42 @@ def verify_slip():
         return jsonify({"success": False, "message": "Missing slip_image key"}), 400
     
     file = request.files['slip_image']
-    image_data = file.read() # อ่านครั้งเดียวเก็บไว้
+    image_data = file.read()
 
-    headers = {'x-api-secret': SLIP2GO_API_SECRET}
+    # 2. แก้ไข Header เป็น Bearer Token
+    headers = {
+        'Authorization': f'Bearer {SLIP2GO_API_SECRET}',
+        'Accept': 'application/json'
+    }
     
+    # 3. เปลี่ยนชื่อ Key จาก 'files' เป็น 'file' ตามคู่มือหน้า 12
+    files = {
+        'file': (file.filename, image_data, file.content_type)
+    }
     # ส่งต่อให้ Slip2go โดยใช้ชื่อ 'files' ตาม Spec ของเขา
-    files = [('files', (file.filename, image_data, file.content_type))]
     try:
         response = requests.post(SLIP2GO_ENDPOINT, headers=headers, files=files)
         result = response.json()
 
         # ตรวจสอบว่า Slip2go ตรวจสำเร็จและพบข้อมูลสลิปหรือไม่
         # Slip2go จะส่งสถานะ success มาใน field 'status'
-        if response.status_code == 200 and result.get('status') == 'success':
-            # ดึงข้อมูลตัวแรกจาก list 'data' มาจัดรูปแบบใหม่ให้แอป Flutter เข้าใจง่าย
-            slip_info = result['data'][0] 
+# 4. เช็คสถานะความสำเร็จ (เอกสารระบุว่าถ้าสำเร็จจะไม่มี Error และมีข้อมูลใน data)
+        if response.status_code == 200 and result.get('success') == True:
+            slip_info = result['data'] 
             return jsonify({
                 "success": True,
                 "data": {
                     "amount": slip_info['amount'],
                     "transRef": slip_info['transRef'],
-                    "receiver": slip_info['receiver']['displayName'],
-                    "sender": slip_info['sender']['displayName']
+                    # ปรับชื่อ field ตามตัวอย่าง Response ในหน้า 13-14
+                    "receiver": slip_info['receiver']['account']['name'],
+                    "sender": slip_info['sender']['account']['name']
                 }
             }), 200
         else:
-            # กรณีรูปภาพไม่ใช่สลิป หรือตรวจไม่ผ่าน
             return jsonify({
                 "success": False, 
-                "message": result.get('message', 'ตรวจสอบสลิปไม่สำเร็จ')
+                "message": result.get('message', 'ตรวจสอบสลิปไม่สำเร็จ (สลิปอาจซ้ำหรือผิดประเภท)')
             }), 400
 
     except Exception as e:
