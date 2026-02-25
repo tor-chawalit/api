@@ -7,7 +7,7 @@ app = Flask(__name__)
 # อนุญาตให้ Flutter Web เชื่อมต่อได้
 CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["Content-Type", "Authorization"])
 SLIP2GO_API_SECRET = 'QvCf0zm2AwStSwtufGk9xH_DoxWf0B4SIUfi5m28TRM=' 
-SLIP2GO_ENDPOINT = 'https://api.slip2go.com/api/v1/verify-slip/image/info'
+SLIP2GO_ENDPOINT = 'https://connect.slip2go.com/api/verify-slip/qr-image/info'
 @app.route('/')
 def health_check():
     return "Slip2go API Service is Online!", 200
