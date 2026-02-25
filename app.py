@@ -14,21 +14,23 @@ SLIP2GO_ENDPOINT = 'https://api.slip2go.com/api/v1/verify-slip/image/info'
 def health_check():
     return "Slip2go API Service is Online!", 200
 
-@app.route('/verify-slip', methods=['POST', 'OPTIONS']) # เพิ่ม OPTIONS
+@app.route('/verify-slip', methods=['POST'])
 def verify_slip():
-    if request.method == 'OPTIONS':
-        return '', 200
-
+    # 1. ตรวจสอบว่ามี Key ชื่อ 'slip_image' ส่งมาไหม
     if 'slip_image' not in request.files:
-        return jsonify({"success": False, "message": "No file uploaded"}), 400
+        return jsonify({"success": False, "message": "Missing slip_image key"}), 400
     
     file = request.files['slip_image']
-    if file.filename == '':
-        return jsonify({"success": False, "message": "No selected file"}), 400
+    
+    # 2. อ่านข้อมูลครั้งเดียวเก็บไว้
+    image_data = file.read()
+    if not image_data:
+        return jsonify({"success": False, "message": "File is empty"}), 400
 
     headers = {'x-api-secret': SLIP2GO_API_SECRET}
-    files = {'files': (file.filename, file.read(), file.content_type)}
-
+    
+    # 3. ส่งต่อให้ Slip2go (ใช้ Key 'files' ตาม Spec ของเขา)
+    files = [('files', (file.filename, image_data, file.content_type))]
     try:
         response = requests.post(SLIP2GO_ENDPOINT, headers=headers, files=files)
         result = response.json()
