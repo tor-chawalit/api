@@ -14,20 +14,15 @@ def health_check():
 
 @app.route('/verify-slip', methods=['POST'])
 def verify_slip():
-    # 1. ตรวจสอบว่ามี Key ชื่อ 'slip_image' ส่งมาไหม
     if 'slip_image' not in request.files:
         return jsonify({"success": False, "message": "Missing slip_image key"}), 400
     
     file = request.files['slip_image']
-    
-    # 2. อ่านข้อมูลครั้งเดียวเก็บไว้
-    image_data = file.read()
-    if not image_data:
-        return jsonify({"success": False, "message": "File is empty"}), 400
+    image_data = file.read() # อ่านครั้งเดียวเก็บไว้
 
     headers = {'x-api-secret': SLIP2GO_API_SECRET}
     
-    # 3. ส่งต่อให้ Slip2go (ใช้ Key 'files' ตาม Spec ของเขา)
+    # ส่งต่อให้ Slip2go โดยใช้ชื่อ 'files' ตาม Spec ของเขา
     files = [('files', (file.filename, image_data, file.content_type))]
     try:
         response = requests.post(SLIP2GO_ENDPOINT, headers=headers, files=files)
